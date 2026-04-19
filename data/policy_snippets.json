@@ -1,0 +1,22 @@
+[
+  {
+    "id": "refund_sla",
+    "title": "Refund processing SLA",
+    "body": "Standard refunds are processed within 5 to 10 business days after approval. Billing must verify the original payment method before issuing credit. Escalate duplicate charges to the billing specialists queue immediately."
+  },
+  {
+    "id": "password_reset",
+    "title": "Account access and password reset",
+    "body": "Users locked out should complete identity verification before a password reset link is sent. Never share passwords in plain text. After three failed attempts, temporary lockout applies for 30 minutes."
+  },
+  {
+    "id": "data_export",
+    "title": "Data export and privacy",
+    "body": "Customers may request a copy of their data under applicable privacy regulations. Exports are generated within 30 days. Remove personal identifiers from internal ticket notes before sharing externally."
+  },
+  {
+    "id": "tone_guidelines",
+    "title": "Support tone and empathy",
+    "body": "Acknowledge the customer's issue explicitly, apologize when the company is at fault, and provide one clear next step with a timeline. Avoid dismissive language and vague promises without owners."
+  }
+]

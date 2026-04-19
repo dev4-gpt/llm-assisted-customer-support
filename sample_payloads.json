@@ -1,0 +1,101 @@
+{
+  "triage": {
+    "description": "POST /api/v1/triage — Triage a single ticket",
+    "examples": [
+      {
+        "label": "Critical billing double-charge",
+        "payload": {
+          "ticket_text": "I was charged twice for my subscription this month! $99.99 was debited twice from my bank account and I demand an immediate refund. This is completely unacceptable and I will dispute the charge with my bank if not resolved today."
+        }
+      },
+      {
+        "label": "Auth issue — locked out",
+        "payload": {
+          "ticket_text": "I cannot log in to my account. I've tried resetting my password three times and the reset email never arrives. I have an important presentation tomorrow and need access urgently."
+        }
+      },
+      {
+        "label": "Low-priority feature request",
+        "payload": {
+          "ticket_text": "Hi there, I'd love to see a dark mode option added to the dashboard. It would be much easier on the eyes during late-night sessions. Not urgent at all, just a suggestion!"
+        }
+      }
+    ]
+  },
+  "quality": {
+    "description": "POST /api/v1/quality — Evaluate an agent draft response",
+    "examples": [
+      {
+        "label": "Good response — should pass",
+        "payload": {
+          "ticket_text": "I was charged twice for my subscription this month and need a refund immediately.",
+          "agent_response": "I'm really sorry to hear you were charged twice — that's incredibly frustrating and I completely understand your concern. I've flagged your account for an urgent billing review and created ticket #BIL-4821. Our billing team will contact you within 2 business hours to process the refund. You won't need to take any further action."
+        }
+      },
+      {
+        "label": "Poor response — should fail",
+        "payload": {
+          "ticket_text": "I was charged twice for my subscription this month and need a refund immediately.",
+          "agent_response": "Hi, thanks for reaching out. We'll look into this. Please allow 5-7 business days."
+        }
+      },
+      {
+        "label": "Policy violation — should fail with flagged phrase",
+        "payload": {
+          "ticket_text": "Your app deleted all my files and I want compensation.",
+          "agent_response": "I apologise for the inconvenience. We guarantee we will compensate you fully and admit this was our fault. Please send your bank details and we will transfer money immediately."
+        }
+      }
+    ]
+  },
+  "pipeline": {
+    "description": "POST /api/v1/pipeline — Full triage + quality workflow",
+    "examples": [
+      {
+        "label": "High-priority bug with decent agent response",
+        "payload": {
+          "ticket_text": "The export to CSV feature is completely broken. I click the button and nothing happens. I've tried on Chrome and Firefox. This is blocking our entire reporting workflow.",
+          "agent_response": "Thank you for reporting this — I can see how disruptive this must be for your team. I've reproduced the CSV export issue and escalated it to our engineering team as priority P1 (ticket #ENG-7734). You should expect a fix in the next 24 hours. I'll personally notify you the moment it's deployed. In the meantime, you can export via our API as a workaround — I can send you the documentation if that would help."
+        }
+      },
+      {
+        "label": "Critical outage — agent response fails quality",
+        "payload": {
+          "ticket_text": "Your entire platform has been down for 2 hours. We are losing thousands of dollars in revenue per minute. This is completely unacceptable. We need immediate escalation to your CTO.",
+          "agent_response": "Sorry for the issue. Our team is aware and working on it."
+        }
+      }
+    ]
+  },
+  "summarize": {
+    "description": "POST /api/v1/summarize — Multi-turn thread summary",
+    "examples": [
+      {
+        "label": "Billing dispute thread",
+        "payload": {
+          "turns": [
+            {
+              "role": "customer",
+              "content": "I was charged twice for my subscription this month and I need the duplicate reversed."
+            },
+            {
+              "role": "agent",
+              "content": "I'm sorry for the duplicate charge. I've opened billing case #BIL-991 and our team will confirm within 2 hours."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rag": {
+    "description": "POST /api/v1/rag/context — Policy snippet retrieval (lexical)",
+    "examples": [
+      {
+        "label": "Refund policy lookup",
+        "payload": {
+          "query": "How long do refunds take and when should I escalate duplicate charges?"
+        }
+      }
+    ]
+  }
+}

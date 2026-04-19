@@ -1,0 +1,7 @@
+{
+  "ticket": {
+    "id": 10001,
+    "subject": "Duplicate charge on subscription",
+    "description": "I was charged twice for the same monthly plan on April 1. Please refund the duplicate immediately."
+  }
+}
