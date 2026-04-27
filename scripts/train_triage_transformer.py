@@ -21,6 +21,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 from pathlib import Path
 
@@ -180,14 +181,23 @@ def main() -> None:
         report_to=[],
     )
 
-    trainer = Trainer(
-        model=model,
-        args=targs,
-        train_dataset=train_ds,
-        eval_dataset=val_ds,
-        tokenizer=tokenizer,
-        compute_metrics=compute_metrics,
-    )
+    trainer_kwargs = {
+        "model": model,
+        "args": targs,
+        "train_dataset": train_ds,
+        "eval_dataset": val_ds,
+        "compute_metrics": compute_metrics,
+    }
+    # transformers API changed across versions:
+    # older Trainer accepts `tokenizer`, newer releases removed it in favor of
+    # `processing_class`. Detect at runtime for compatibility.
+    trainer_params = set(inspect.signature(Trainer.__init__).parameters.keys())
+    if "tokenizer" in trainer_params:
+        trainer_kwargs["tokenizer"] = tokenizer
+    elif "processing_class" in trainer_params:
+        trainer_kwargs["processing_class"] = tokenizer
+
+    trainer = Trainer(**trainer_kwargs)
     trainer.train()
 
     trainer.save_model(str(args.out))

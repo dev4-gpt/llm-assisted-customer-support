@@ -120,6 +120,36 @@ class TestTriageService:
         with pytest.raises(LLMParseError):
             service.triage(TriageRequest(ticket_text="My payment failed completely"))
 
+    def test_invalid_intent_label_is_recovered_via_synonym_mapping(self, service, mock_llm):
+        mock_llm.complete_json.return_value = {
+            "priority": "high",
+            "category": "billing",
+            "intents": [
+                {"label": "refund", "score": 0.91},
+                {"label": "technical_bug", "score": 0.2},
+            ],
+            "sentiment_score": -0.4,
+            "rationale": "Refund request due to duplicate charge.",
+            "confidence": 0.9,
+        }
+
+        result = service.triage(TriageRequest(ticket_text="I need a refund for duplicate charge."))
+        labels = {i.label for i in result.intents}
+        assert "billing" in labels
+
+    def test_invalid_category_is_recovered_via_synonym_mapping(self, service, mock_llm):
+        mock_llm.complete_json.return_value = {
+            "priority": "high",
+            "category": "refund",
+            "intents": [{"label": "refund", "score": 0.92}],
+            "sentiment_score": -0.5,
+            "rationale": "Customer asks for refund.",
+            "confidence": 0.92,
+        }
+
+        result = service.triage(TriageRequest(ticket_text="Please refund the extra charge"))
+        assert result.category == Category.BILLING
+
     def test_sentiment_at_boundary_does_not_escalate(self, service, mock_llm):
         """Sentiment exactly at cutoff (-0.6) should NOT escalate."""
         mock_llm.complete_json.return_value = {

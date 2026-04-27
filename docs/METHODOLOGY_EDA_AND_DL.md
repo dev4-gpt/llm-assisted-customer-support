@@ -41,7 +41,7 @@ The system is **deployment-first**: the main “deep” component is a **large p
 
 | Component | Model family | Role | Why this choice |
 |-----------|--------------|------|------------------|
-| **Triage / quality / summarize** | General-purpose **LLM** (e.g. via Ollama or Anthropic) | Structured JSON outputs + rubrics | One interface covers **many tasks** without training separate heads; fastest path to end-to-end behavior. |
+| **Triage / quality / summarize** | General-purpose **LLM** (e.g. via OpenRouter/NVIDIA-compatible endpoint or Anthropic) | Structured JSON outputs + rubrics | One interface covers **many tasks** without training separate heads; fastest path to end-to-end behavior. |
 | **Policy RAG (optional)** | **Sentence-transformer** encoders | Dense similarity over policy snippets | Strong semantic retrieval vs pure lexical overlap when `RAG_BACKEND=embedding`. Still **inference-only** on fixed weights unless you add fine-tuning elsewhere. |
 | **Hybrid hint (optional)** | **TF–IDF + logistic regression** | Fast **category** suggestion to prepend to the triage prompt | **Not** a deep net: cheap baseline, interpretable, no GPU; useful for **metrics** and **latency** comparisons in reports. |
 | **Encoder fine-tune (optional)** | **BERT / RoBERTa** sequence classification ([`train_triage_transformer.py`](../scripts/train_triage_transformer.py)) | Same role as TF–IDF hint: **single-task category** suggestion | Satisfies coursework that expects a **Hugging Face `Trainer`** loop and **encoder fine-tuning**; **off by default** (`TRIAGE_TRANSFORMER_*`). |

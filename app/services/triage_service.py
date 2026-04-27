@@ -26,6 +26,7 @@ from app.models.domain import (
     TriageRequest,
     TriageResult,
 )
+from app.services.intent_fallback_service import IntentFallbackService
 from app.services.llm_client import LLMClient
 from app.services.rag_service import RAGService
 
@@ -107,6 +108,7 @@ class TriageService:
         self._rag = rag_service
         self._baseline_pipe: Any = None
         self._transformer_predictor: Any = None
+        self._intent_fallback = IntentFallbackService(settings)
 
     def _policy_prefix(self, request: TriageRequest) -> str:
         if not request.include_policy_context:
@@ -173,7 +175,7 @@ class TriageService:
         prompt = _TRIAGE_PROMPT.format(prefix=prefix, ticket_text=request.ticket_text)
         raw = self._llm.complete_json(prompt, schema_hint="TriageResult")
 
-        triage_data = self._validate_triage_response(raw)
+        triage_data = self._validate_triage_response(raw, ticket_text=request.ticket_text)
         priority = Priority(triage_data["priority"])
         category = Category(triage_data["category"])
         sentiment_score: float = triage_data["sentiment_score"]
@@ -181,6 +183,7 @@ class TriageService:
             triage_data["intents"],
             primary=category,
             confidence=float(triage_data["confidence"]),
+            ticket_text=request.ticket_text,
         )
 
         routed_team = self._resolve_routing(priority, category, sentiment_score)
@@ -218,22 +221,38 @@ class TriageService:
 
         return _ROUTING_MATRIX.get((priority, category), RoutedTeam.GENERAL_SUPPORT)
 
-    @staticmethod
     def _normalize_intents(
+        self,
         raw_intents: list[dict[str, Any]],
         *,
         primary: Category,
         confidence: float,
+        ticket_text: str,
     ) -> list[IntentScore]:
         valid_categories = {c.value for c in Category}
         scored: list[IntentScore] = []
         for item in raw_intents:
             label = item.get("label")
             score = item.get("score")
-            if not isinstance(label, str) or label not in valid_categories:
+            if not isinstance(label, str):
                 raise ValidationError(
                     f"Invalid intent label '{label}'. Expected one of: {valid_categories}"
                 )
+            if label not in valid_categories:
+                mapped_label = self._intent_fallback.map_to_valid_category(
+                    label,
+                    ticket_text=ticket_text,
+                )
+                if mapped_label is None:
+                    raise ValidationError(
+                        f"Invalid intent label '{label}'. Expected one of: {valid_categories}"
+                    )
+                logger.warning(
+                    "Recovered invalid intent label",
+                    original_label=label,
+                    mapped_label=mapped_label,
+                )
+                label = mapped_label
             if not isinstance(score, (int, float)):
                 raise ValidationError("Each intent score must be a number")
             s = float(score)
@@ -248,8 +267,7 @@ class TriageService:
         scored.sort(key=lambda x: x.score, reverse=True)
         return scored
 
-    @staticmethod
-    def _validate_triage_response(data: dict[str, Any]) -> dict[str, Any]:
+    def _validate_triage_response(self, data: dict[str, Any], *, ticket_text: str) -> dict[str, Any]:
         required = {
             "priority",
             "category",
@@ -270,10 +288,21 @@ class TriageService:
 
         valid_categories = {c.value for c in Category}
         if data["category"] not in valid_categories:
-            raise ValidationError(
-                f"LLM returned invalid category '{data['category']}'. "
-                f"Expected one of: {valid_categories}"
+            mapped_category = self._intent_fallback.map_to_valid_category(
+                str(data["category"]),
+                ticket_text=ticket_text,
             )
+            if mapped_category is None:
+                raise ValidationError(
+                    f"LLM returned invalid category '{data['category']}'. "
+                    f"Expected one of: {valid_categories}"
+                )
+            logger.warning(
+                "Recovered invalid category label",
+                original_label=str(data["category"]),
+                mapped_label=mapped_category,
+            )
+            data["category"] = mapped_category
 
         if not isinstance(data["sentiment_score"], (int, float)):
             raise ValidationError("sentiment_score must be a number")

@@ -1,6 +1,6 @@
 # LLM-Augmented Customer Support Triage & Quality Monitoring
 
-Production-grade FastAPI service that uses a **configurable LLM** (default: **Ollama** / OpenAI-compatible API; optional **Anthropic**) to triage support tickets, evaluate agent response quality, and summarize threads. Includes **lexical or embedding RAG**, **policy-grounded quality**, optional **hybrid triage** (TF–IDF+LR hint), **offline golden-set evaluation**, and a **Zendesk worker stub**. Typed, tested, observable, containerised, and CI-ready.
+Production-grade FastAPI service that uses a **configurable LLM** (default: **hosted OpenAI-compatible APIs** like OpenRouter/NVIDIA; optional **Anthropic**) to triage support tickets, evaluate agent response quality, and summarize threads. Includes **lexical or embedding RAG**, **policy-grounded quality**, optional **hybrid triage** (TF–IDF+LR hint), **offline golden-set evaluation**, and a **Zendesk worker stub**. Typed, tested, observable, containerised, and CI-ready.
 
 ---
 
@@ -19,7 +19,7 @@ Production-grade FastAPI service that uses a **configurable LLM** (default: **Ol
 │  └────────────────────┬──────────────────────────────────┘   │
 │                       │                                       │
 │  ┌────────────────────▼──────────────────────────────────┐   │
-│  │         LLMClient (Ollama / OpenAI-compat / Anthropic)│   │
+│  │      LLMClient (OpenAI-compat / Anthropic)            │   │
 │  │   • Retry (tenacity)  • JSON parsing  • Error mapping │   │
 │  └───────────────────────────────────────────────────────┘   │
 │                                                               │
@@ -109,7 +109,7 @@ support_triage/
 git clone <repo>
 cd llm-assist
 cp .env.example .env
-# Edit .env — default: Ollama on 11434; or set LLM_PROVIDER=anthropic + ANTHROPIC_API_KEY
+# Edit .env — default: OpenRouter OpenAI-compatible API; or set your preferred provider.
 ```
 
 ### 2. Run locally (Python)
@@ -146,9 +146,23 @@ docker compose --profile observability up --build
 
 - Project proposal (PDF): `LLM‑Augmented_Customer SupportTriage_QualityMonitoringSystem .pdf` (repo root)
 - `docs/DATASETS.md`: dataset sources, features, splits, preprocessing
+- `docs/ALIGNMENT_READINESS.md`: claims-vs-evidence matrix, reproducible golden run path, and final demo scope
 - `docs/IMPLEMENTATION_REPORT.md`: implementation report; **section 6** separates **implemented inference stack** from **literature / future transformer fine-tuning** (use for accurate course reporting)
 - `docs/METHODOLOGY_EDA_AND_DL.md`: **EDA + deep-learning choices**, train/test strategy, evaluation metrics (for reports and slides)
 - `docs/IMPLEMENTATION_CHANGELOG.xlsx`: changelog / tracking sheet
+
+---
+
+## Golden run path (deterministic end-to-end proof)
+
+For a submission/demo-safe proof that does not require external LLM credentials:
+
+```bash
+pip install -e ".[dev]"
+pytest tests/integration/test_pipeline_e2e.py -v
+```
+
+This single test validates the API wiring and full `/api/v1/pipeline` orchestration, plus `/api/v1/summarize` and `/api/v1/rag/context`, with deterministic mocked LLM outputs.
 
 ---
 
@@ -266,9 +280,16 @@ All configuration is via environment variables (see `.env.example`).
 
 | Variable | Default | Description |
 |---|---|---|
-| `LLM_PROVIDER` | `ollama` | `ollama` \| `openai_compatible` \| `anthropic` |
-| `LLM_MODEL` | `llama3.2` | Model id on the provider |
-| `OPENAI_COMPATIBLE_BASE_URL` | `http://127.0.0.1:11434/v1` | Chat completions base (Ollama) |
+| `LLM_PROFILE` | `openrouter` | `manual` \| `ollama` \| `openrouter` \| `nvidia` (single-switch profile selector) |
+| `LLM_PROVIDER` | `openai_compatible` | `ollama` \| `openai_compatible` \| `anthropic` |
+| `LLM_MODEL` | `google/gemini-2.0-flash-exp:free` | Model id on the provider |
+| `OPENAI_COMPATIBLE_BASE_URL` | `https://openrouter.ai/api/v1` | Chat completions base (OpenAI-compatible provider) |
+| `OPENAI_COMPATIBLE_API_KEY` | `replace-with-real-api-key` | API key for OpenAI-compatible provider |
+| `OPENROUTER_API_KEY` | — | Used when `LLM_PROFILE=openrouter` |
+| `OPENROUTER_MODEL` | `google/gemini-2.0-flash-exp:free` | Used when `LLM_PROFILE=openrouter` |
+| `NVIDIA_API_KEY` | — | Used when `LLM_PROFILE=nvidia` |
+| `NVIDIA_MODEL` | `meta/llama-3.1-8b-instruct` | Used when `LLM_PROFILE=nvidia` |
+| `OLLAMA_MODEL` | `qwen2.5:7b-instruct` | Used when `LLM_PROFILE=ollama` |
 | `ANTHROPIC_API_KEY` | — | Required when `LLM_PROVIDER=anthropic` |
 | `LLM_PROMPT_VERSION` | `v1` | Label on Prometheus LLM metrics |
 | `QUALITY_PASS_THRESHOLD` | `0.70` | Minimum score to pass quality check |
@@ -280,6 +301,9 @@ All configuration is via environment variables (see `.env.example`).
 | `TRIAGE_BASELINE_MODEL_PATH` | — | Path to `train_encoder_classifier.py` output |
 | `TRIAGE_TRANSFORMER_ENABLED` | `false` | Use fine-tuned BERT/RoBERTa hint (`pip install -e ".[transformer]"`) |
 | `TRIAGE_TRANSFORMER_MODEL_DIR` | — | Directory from `train_triage_transformer.py` (HF checkpoint) |
+| `TRIAGE_EMBEDDING_FALLBACK_ENABLED` | `true` | Recover off-schema intent/category labels via synonym + embedding similarity mapping |
+| `TRIAGE_EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | sentence-transformers model for fallback mapping (needs `.[embedding]`) |
+| `TRIAGE_EMBEDDING_MIN_SIMILARITY` | `0.22` | Minimum cosine similarity to accept embedding-based fallback label |
 | `SENTIMENT_ESCALATION_CUTOFF` | `-0.6` | Sentiment below this escalates (high/critical) |
 | `SLA_*_MINUTES` | see `.env.example` | SLA map by priority |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis (cache degrades if down) |
@@ -290,6 +314,31 @@ All configuration is via environment variables (see `.env.example`).
 | `APP_LOG_LEVEL` | `INFO` | Log level |
 
 **Reverse proxy:** In production, terminate TLS at the proxy and optionally inject `X-API-Key` there instead of exposing keys to browsers.
+
+### Provider switching with one variable
+
+Keep all provider keys in `.env` and set only:
+
+```bash
+LLM_PROFILE=ollama
+# or
+LLM_PROFILE=openrouter
+# or
+LLM_PROFILE=nvidia
+```
+
+`LLM_PROFILE=manual` disables profile overrides and uses `LLM_PROVIDER` + `OPENAI_COMPATIBLE_*` + `LLM_MODEL` directly.
+
+### Reliability tip for hosted models
+
+Hosted models may occasionally emit labels outside the strict taxonomy (for example, `refund` instead of `billing`).  
+The triage service now includes a deterministic recovery layer (synonym + optional embedding similarity) controlled by:
+
+```bash
+TRIAGE_EMBEDDING_FALLBACK_ENABLED=true
+TRIAGE_EMBEDDING_MODEL=all-MiniLM-L6-v2
+TRIAGE_EMBEDDING_MIN_SIMILARITY=0.22
+```
 
 ---
 

@@ -11,9 +11,11 @@ import os
 
 import pytest
 
-# Default: open-source path (Ollama OpenAI-compatible API) — no Anthropic key required
-os.environ.setdefault("LLM_PROVIDER", "ollama")
-os.environ.setdefault("LLM_MODEL", "llama3.2")
+# Default: hosted OpenAI-compatible path for tests (no real network call required).
+os.environ.setdefault("LLM_PROVIDER", "openai_compatible")
+os.environ.setdefault("LLM_MODEL", "google/gemini-2.0-flash-exp:free")
+os.environ.setdefault("OPENAI_COMPATIBLE_BASE_URL", "https://openrouter.ai/api/v1")
+os.environ.setdefault("OPENAI_COMPATIBLE_API_KEY", "test-api-key")
 os.environ.setdefault("APP_SECRET_KEY", "test-secret-key-minimum-16chars")
 os.environ.setdefault("QUALITY_POLICY_CONTEXT_TOP_K", "0")
 os.environ.setdefault("TRIAGE_POLICY_CONTEXT_TOP_K", "0")

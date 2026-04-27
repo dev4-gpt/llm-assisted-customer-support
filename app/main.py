@@ -56,7 +56,7 @@ def create_app() -> FastAPI:
         title="Support Triage & Quality Monitoring API",
         description=(
             "LLM-augmented customer support triage and agent response quality evaluation. "
-            "Default: local models via Ollama (OpenAI-compatible API); optional Anthropic."
+            "Default: hosted OpenAI-compatible APIs (OpenRouter/NVIDIA/etc); optional Anthropic."
         ),
         version="1.0.0",
         docs_url="/docs",

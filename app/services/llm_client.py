@@ -3,7 +3,7 @@ app/services/llm_client.py
 ──────────────────────────
 LLM client for JSON-only prompts.
 
-Default: OpenAI-compatible HTTP API (Ollama, vLLM, LM Studio, etc.).
+Default: OpenAI-compatible HTTP API (OpenRouter, NVIDIA NIM, vLLM, Ollama, etc.).
 Optional: Anthropic Messages API when LLM_PROVIDER=anthropic.
 
 Responsibilities:
@@ -150,7 +150,7 @@ class LLMClient:
             raise LLMError(f"Anthropic API error: {exc}") from exc
 
     def _complete_openai_compatible(self, user_prompt: str) -> str:
-        """POST /v1/chat/completions (Ollama, vLLM, OpenAI-compatible gateways)."""
+        """POST /v1/chat/completions (OpenAI-compatible gateways)."""
         try:
             return self._post_chat_completion_json(user_prompt)
         except httpx.TimeoutException as exc:

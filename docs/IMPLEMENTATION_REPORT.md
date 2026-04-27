@@ -16,7 +16,7 @@ The repository implements a **production-style FastAPI** service under the `app/
 - **API hardening**: optional comma-separated **`API_KEYS`** (require `X-API-Key` on POST `/api/v1/*` except `/health`); optional **`AUDIT_LOG_PATH`** JSONL (metadata only, no bodies).
 - **Prometheus**: LLM metrics include **`prompt_version`** label (`LLM_PROMPT_VERSION`, default `v1`).
 
-Dependencies and configuration are defined in [`pyproject.toml`](../pyproject.toml). Default LLM backend is **OpenAI-compatible** (e.g. **Ollama**); **Anthropic** is optional (`LLM_PROVIDER=anthropic`).
+Dependencies and configuration are defined in [`pyproject.toml`](../pyproject.toml). Default LLM backend is **OpenAI-compatible** (e.g. OpenRouter / NVIDIA endpoints); **Anthropic** is optional (`LLM_PROVIDER=anthropic`).
 
 ## 2) Package layout (authoritative)
 
@@ -27,7 +27,7 @@ Dependencies and configuration are defined in [`pyproject.toml`](../pyproject.to
 | [`app/core/dependencies.py`](../app/core/dependencies.py) | DI: `LLMClient`, cache, triage, quality, pipeline, summarization, **singleton `RAGService`** |
 | [`app/core/exceptions.py`](../app/core/exceptions.py), [`logging.py`](../app/core/logging.py) | Errors and structlog |
 | [`app/models/domain.py`](../app/models/domain.py) | Pydantic v2 request/response models; `include_policy_context` on triage/quality requests |
-| [`app/services/llm_client.py`](../app/services/llm_client.py) | JSON completions (Ollama/OpenAI-compatible or Anthropic); metrics tagged by `prompt_version` |
+| [`app/services/llm_client.py`](../app/services/llm_client.py) | JSON completions (OpenAI-compatible or Anthropic); metrics tagged by `prompt_version` |
 | [`app/services/triage_service.py`](../app/services/triage_service.py) | Triage prompt, validation, routing matrix, optional RAG prefix + hybrid baseline hint |
 | [`app/services/quality_service.py`](../app/services/quality_service.py) | Quality rubric, LLM evaluation, optional policy injection |
 | [`app/services/pipeline_service.py`](../app/services/pipeline_service.py) | Concurrent triage + quality |

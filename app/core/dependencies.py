@@ -25,13 +25,13 @@ from app.utils.cache import ResponseCache
 
 
 @lru_cache(maxsize=1)
-def get_llm_client(settings: Settings = Depends(get_settings)) -> LLMClient:
-    return LLMClient(settings)
+def get_llm_client() -> LLMClient:
+    return LLMClient(get_settings())
 
 
 @lru_cache(maxsize=1)
-def get_cache(settings: Settings = Depends(get_settings)) -> ResponseCache:
-    return ResponseCache(settings)
+def get_cache() -> ResponseCache:
+    return ResponseCache(get_settings())
 
 
 @lru_cache(maxsize=1)
@@ -43,28 +43,25 @@ def get_rag_service() -> RAGService:
 @lru_cache(maxsize=1)
 def get_triage_service(
     llm: LLMClient = Depends(get_llm_client),
-    settings: Settings = Depends(get_settings),
     rag: RAGService = Depends(get_rag_service),
 ) -> TriageService:
-    return TriageService(llm, settings, rag)
+    return TriageService(llm, get_settings(), rag)
 
 
 @lru_cache(maxsize=1)
 def get_quality_service(
     llm: LLMClient = Depends(get_llm_client),
-    settings: Settings = Depends(get_settings),
     rag: RAGService = Depends(get_rag_service),
 ) -> QualityService:
-    return QualityService(llm, settings, rag)
+    return QualityService(llm, get_settings(), rag)
 
 
 @lru_cache(maxsize=1)
 def get_pipeline_service(
     triage: TriageService = Depends(get_triage_service),
     quality: QualityService = Depends(get_quality_service),
-    settings: Settings = Depends(get_settings),
 ) -> PipelineService:
-    return PipelineService(triage, quality, settings)
+    return PipelineService(triage, quality, get_settings())
 
 
 @lru_cache(maxsize=1)

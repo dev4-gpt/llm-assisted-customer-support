@@ -31,29 +31,58 @@ class Settings(BaseSettings):
     )
 
     # ── LLM provider ─────────────────────────────────────────────────────────
-    # Default: open-source via Ollama (OpenAI-compatible API at /v1/chat/completions).
+    # Default: hosted OpenAI-compatible API (OpenRouter/NVIDIA/etc at /v1/chat/completions).
     # Set LLM_PROVIDER=anthropic only if using Anthropic cloud (requires pip install anthropic).
+    llm_profile: Literal["manual", "ollama", "openrouter", "nvidia"] = Field(
+        default="manual",
+        description=(
+            "Convenience profile switch. manual=use LLM_PROVIDER directly; "
+            "ollama/openrouter/nvidia auto-fill provider/base/model/key fields."
+        ),
+    )
     llm_provider: Literal["ollama", "openai_compatible", "anthropic"] = Field(
-        default="ollama",
+        default="openai_compatible",
         description="ollama | openai_compatible (same HTTP API) | anthropic",
     )
     llm_model: str = Field(
-        default="llama3.2",
+        default="google/gemini-2.0-flash-exp:free",
         validation_alias=AliasChoices("LLM_MODEL", "ANTHROPIC_MODEL"),
-        description="Model name on the provider (e.g. llama3.2 for Ollama)",
+        description="Model name on the provider (e.g. OpenRouter/NVIDIA model id)",
     )
     llm_max_tokens: int = Field(2048, ge=256, le=8192)
     llm_timeout_seconds: float = Field(30.0, gt=0)
     llm_temperature: float = Field(0.2, ge=0.0, le=2.0)
 
-    # OpenAI-compatible servers: Ollama, vLLM, LM Studio, etc.
+    # OpenAI-compatible servers: OpenRouter, NVIDIA NIM, Ollama, vLLM, LM Studio, etc.
     openai_compatible_base_url: str = Field(
-        default="http://127.0.0.1:11434/v1",
-        description="Base URL with /v1 suffix (Ollama default)",
+        default="https://openrouter.ai/api/v1",
+        description="Base URL with /v1 suffix for OpenAI-compatible chat completions",
     )
     openai_compatible_api_key: str = Field(
-        default="ollama",
-        description="Bearer token; use 'ollama' or empty for local Ollama",
+        default="replace-with-real-api-key",
+        description="Bearer token for the OpenAI-compatible provider",
+    )
+
+    # Optional profile-specific key/model slots (for llm_profile switching)
+    ollama_model: str = Field(
+        default="qwen2.5:7b-instruct",
+        description="Model tag to use when LLM_PROFILE=ollama",
+    )
+    openrouter_api_key: str | None = Field(
+        default=None,
+        description="OpenRouter key used when LLM_PROFILE=openrouter",
+    )
+    openrouter_model: str = Field(
+        default="google/gemini-2.0-flash-exp:free",
+        description="Model id used when LLM_PROFILE=openrouter",
+    )
+    nvidia_api_key: str | None = Field(
+        default=None,
+        description="NVIDIA API key used when LLM_PROFILE=nvidia",
+    )
+    nvidia_model: str = Field(
+        default="meta/llama-3.1-8b-instruct",
+        description="Model id used when LLM_PROFILE=nvidia",
     )
 
     # Anthropic cloud (optional)
@@ -144,6 +173,25 @@ class Settings(BaseSettings):
         description="Directory from scripts/train_triage_transformer.py (config.json + weights).",
     )
 
+    # ── Intent/category fallback hardening ───────────────────────────────────
+    triage_embedding_fallback_enabled: bool = Field(
+        True,
+        description=(
+            "If true, invalid LLM intent/category labels are mapped to allowed taxonomy "
+            "using synonym rules and optional embedding similarity."
+        ),
+    )
+    triage_embedding_model: str = Field(
+        default="all-MiniLM-L6-v2",
+        description="Embedding model for triage label fallback (requires [embedding] extra).",
+    )
+    triage_embedding_min_similarity: float = Field(
+        0.22,
+        ge=0.0,
+        le=1.0,
+        description="Minimum cosine similarity for embedding-based label fallback mapping.",
+    )
+
     # ── LLM observability ────────────────────────────────────────────────────
     llm_prompt_version: str = Field(
         default="v1",
@@ -171,11 +219,37 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_llm_provider(self) -> Settings:
+        if self.llm_profile == "ollama":
+            self.llm_provider = "ollama"
+            self.openai_compatible_base_url = "http://127.0.0.1:11434/v1"
+            self.openai_compatible_api_key = "ollama"
+            self.llm_model = self.ollama_model
+        elif self.llm_profile == "openrouter":
+            self.llm_provider = "openai_compatible"
+            self.openai_compatible_base_url = "https://openrouter.ai/api/v1"
+            self.llm_model = self.openrouter_model
+            if self.openrouter_api_key:
+                self.openai_compatible_api_key = self.openrouter_api_key
+        elif self.llm_profile == "nvidia":
+            self.llm_provider = "openai_compatible"
+            self.openai_compatible_base_url = "https://integrate.api.nvidia.com/v1"
+            self.llm_model = self.nvidia_model
+            if self.nvidia_api_key:
+                self.openai_compatible_api_key = self.nvidia_api_key
+
         if self.llm_provider == "anthropic" and not self.anthropic_api_key:
             raise ValueError(
                 "ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic "
                 "(install optional dependency: pip install "
                 "'support-triage[anthropic]' or anthropic)"
+            )
+        if (
+            self.llm_provider == "openai_compatible"
+            and self.openai_compatible_api_key == "replace-with-real-api-key"
+        ):
+            raise ValueError(
+                "OPENAI_COMPATIBLE_API_KEY is not set. Provide a real key "
+                "or set LLM_PROFILE=ollama for local usage."
             )
         return self
 
