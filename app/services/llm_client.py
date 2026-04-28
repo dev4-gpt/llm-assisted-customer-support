@@ -43,11 +43,17 @@ Do not include markdown fences, preamble, or any text outside the JSON object.
 """
 
 
+class LLMEmptyResponseError(Exception):
+    pass
+
+
 def _retryable_http_exception(exc: BaseException) -> bool:
     if isinstance(exc, httpx.TimeoutException):
         return True
     if isinstance(exc, httpx.HTTPStatusError):
         return exc.response.status_code in (429, 503)
+    if isinstance(exc, LLMEmptyResponseError):
+        return True
     return False
 
 
@@ -199,6 +205,9 @@ class LLMClient:
 
         if not isinstance(content, str):
             raise LLMError("LLM response content is not a string")
+        if not content.strip():
+            logger.warning("LLM returned an empty string, triggering retry.")
+            raise LLMEmptyResponseError("Empty string from LLM")
         return content
 
     @staticmethod
