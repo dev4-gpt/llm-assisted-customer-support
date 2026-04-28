@@ -56,7 +56,7 @@ def _slide_image(prs: Presentation, title: str, image_path: Path, caption: str) 
 
 
 def build_pptx() -> Path:
-    metrics = _load_json(ARTIFACTS / "eval" / "metrics.json")
+    metrics = _load_json(ARTIFACTS / "eval" / "metrics_live.json") or _load_json(ARTIFACTS / "eval" / "metrics.json")
     train = _load_json(ARTIFACTS / "triage_roberta_demo" / "train_metrics.json")
     prs = Presentation()
 
@@ -116,6 +116,8 @@ def build_pptx() -> Path:
 
     # Result-specific slides
     triage_acc = metrics.get("triage_category", {}).get("accuracy", "N/A")
+    triage_micro = metrics.get("triage_category", {}).get("micro_f1", "N/A")
+    triage_macro = metrics.get("triage_category", {}).get("macro_f1", "N/A")
     priority_acc = metrics.get("triage_priority", {}).get("accuracy", "N/A")
     quality_mean = metrics.get("quality", {}).get("mean_score", "N/A")
     rouge = metrics.get("summarize", {}).get("mean_rouge_l_f1", "N/A")
@@ -124,6 +126,8 @@ def build_pptx() -> Path:
         "Offline Evaluation Snapshot",
         [
             f"Triage category accuracy: {triage_acc}",
+            f"Triage category micro F1: {triage_micro}",
+            f"Triage category macro F1: {triage_macro}",
             f"Triage priority accuracy: {priority_acc}",
             f"Quality mean score: {quality_mean}",
             f"Summarization ROUGE-L F1: {rouge}",
@@ -186,9 +190,12 @@ def build_pptx() -> Path:
 
 
 def build_report_pdf() -> Path:
-    metrics = _load_json(ARTIFACTS / "eval" / "metrics.json")
+    metrics = _load_json(ARTIFACTS / "eval" / "metrics_live.json") or _load_json(ARTIFACTS / "eval" / "metrics.json")
     train = _load_json(ARTIFACTS / "triage_roberta_demo" / "train_metrics.json")
-    summary_md = (ARTIFACTS / "eval" / "summary.md").read_text(encoding="utf-8")
+    summary_path = ARTIFACTS / "eval" / "summary_live.md"
+    if not summary_path.exists():
+        summary_path = ARTIFACTS / "eval" / "summary.md"
+    summary_md = summary_path.read_text(encoding="utf-8") if summary_path.exists() else "No summary found."
 
     out = ROOT / "LlmCustomerSupport_project_report_updated.pdf"
     doc = SimpleDocTemplate(str(out), pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40)
@@ -224,6 +231,8 @@ def build_report_pdf() -> Path:
     table_data = [
         ["Metric", "Value"],
         ["Triage category accuracy", str(metrics.get("triage_category", {}).get("accuracy", "N/A"))],
+        ["Triage category micro F1", str(metrics.get("triage_category", {}).get("micro_f1", "N/A"))],
+        ["Triage category macro F1", str(metrics.get("triage_category", {}).get("macro_f1", "N/A"))],
         ["Triage priority accuracy", str(metrics.get("triage_priority", {}).get("accuracy", "N/A"))],
         ["Quality mean score", str(metrics.get("quality", {}).get("mean_score", "N/A"))],
         ["Summarization ROUGE-L F1", str(metrics.get("summarize", {}).get("mean_rouge_l_f1", "N/A"))],

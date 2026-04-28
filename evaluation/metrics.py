@@ -25,22 +25,58 @@ def classification_report_dict(
 
     labels = sorted(set(y_true) | set(y_pred))
     per_label: dict[str, dict[str, float]] = {}
+    supports: dict[str, int] = {}
+    confusion_matrix: dict[str, dict[str, int]] = {
+        t_lab: {p_lab: 0 for p_lab in labels} for t_lab in labels
+    }
 
     for lab in labels:
         tp = sum(1 for t, p in zip(y_true, y_pred, strict=True) if t == lab and p == lab)
         fp = sum(1 for t, p in zip(y_true, y_pred, strict=True) if t != lab and p == lab)
         fn = sum(1 for t, p in zip(y_true, y_pred, strict=True) if t == lab and p != lab)
+        support = sum(1 for t in y_true if t == lab)
         prec = tp / (tp + fp) if (tp + fp) else 0.0
         rec = tp / (tp + fn) if (tp + fn) else 0.0
         f1 = (2 * prec * rec / (prec + rec)) if (prec + rec) else 0.0
-        per_label[lab] = {"precision": prec, "recall": rec, "f1": f1}
+        per_label[lab] = {"precision": prec, "recall": rec, "f1": f1, "support": float(support)}
+        supports[lab] = support
+
+    for t, p in zip(y_true, y_pred, strict=True):
+        confusion_matrix[t][p] += 1
 
     correct = sum(1 for t, p in zip(y_true, y_pred, strict=True) if t == p)
     accuracy = correct / len(y_true) if y_true else 0.0
+    tp_total = sum(1 for t, p in zip(y_true, y_pred, strict=True) if t == p)
+    fp_total = sum(1 for t, p in zip(y_true, y_pred, strict=True) if t != p)
+    fn_total = fp_total
+    micro_precision = tp_total / (tp_total + fp_total) if (tp_total + fp_total) else 0.0
+    micro_recall = tp_total / (tp_total + fn_total) if (tp_total + fn_total) else 0.0
+    micro_f1 = (
+        (2 * micro_precision * micro_recall / (micro_precision + micro_recall))
+        if (micro_precision + micro_recall)
+        else 0.0
+    )
+    macro_f1 = sum(v["f1"] for v in per_label.values()) / len(per_label) if per_label else 0.0
+
+    minority_classes = [lab for lab, s in supports.items() if s == min(supports.values(), default=0)]
+    minority_performance = {
+        lab: {
+            "support": float(supports[lab]),
+            "precision": per_label[lab]["precision"],
+            "recall": per_label[lab]["recall"],
+            "f1": per_label[lab]["f1"],
+        }
+        for lab in minority_classes
+    }
 
     return {
         "accuracy": accuracy,
+        "micro_f1": micro_f1,
+        "macro_f1": macro_f1,
         "per_label": per_label,
+        "labels": labels,
+        "confusion_matrix": confusion_matrix,
+        "minority_class_performance": minority_performance,
         "support": len(y_true),
     }
 

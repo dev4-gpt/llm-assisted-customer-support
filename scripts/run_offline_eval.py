@@ -273,11 +273,25 @@ def metrics_to_markdown(data: dict[str, Any]) -> str:
         tc = data["triage_category"]
         lines.append("## Triage category")
         lines.append(f"- accuracy: **{tc['accuracy']:.4f}**")
+        lines.append(f"- micro F1: **{tc.get('micro_f1', 0.0):.4f}**")
+        lines.append(f"- macro F1: **{tc.get('macro_f1', 0.0):.4f}**")
+        lines.append("- minority-class performance:")
+        for lab, stats in tc.get("minority_class_performance", {}).items():
+            lines.append(
+                f"  - {lab}: f1={stats['f1']:.4f}, precision={stats['precision']:.4f}, "
+                f"recall={stats['recall']:.4f}, support={int(stats['support'])}"
+            )
+        lines.append("- confusion matrix (true -> predicted counts):")
+        for true_lab, row in tc.get("confusion_matrix", {}).items():
+            pairs = ", ".join(f"{pred_lab}:{count}" for pred_lab, count in row.items())
+            lines.append(f"  - {true_lab}: {pairs}")
         lines.append("")
     if "triage_priority" in data:
         tp = data["triage_priority"]
         lines.append("## Triage priority")
         lines.append(f"- accuracy: **{tp['accuracy']:.4f}**")
+        lines.append(f"- micro F1: **{tp.get('micro_f1', 0.0):.4f}**")
+        lines.append(f"- macro F1: **{tp.get('macro_f1', 0.0):.4f}**")
         lines.append("")
     if "quality" in data:
         q = data["quality"]

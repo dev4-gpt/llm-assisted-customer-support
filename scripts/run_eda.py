@@ -4,7 +4,8 @@ Exploratory data analysis (EDA) plots for the golden eval set and/or a labeled t
 
 Default input: ``data/golden/eval_set.jsonl`` (always present in-repo).
 
-Outputs PNGs under ``artifacts/eda/`` (gitignored). Install: ``pip install -e ".[eda]"``.
+Outputs PNGs under ``artifacts/eda/`` (gitignored). 
+Install: ``pip install -e ".[eda]"``.
 
 Examples:
   python scripts/run_eda.py
