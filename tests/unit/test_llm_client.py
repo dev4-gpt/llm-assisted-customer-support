@@ -20,6 +20,7 @@ from app.services.llm_client import LLMClient
 @pytest.fixture()
 def settings_ollama() -> Settings:
     return Settings(
+        llm_profile="manual",
         llm_provider="ollama",
         app_secret_key="test-secret-key-1234",
     )
@@ -28,6 +29,7 @@ def settings_ollama() -> Settings:
 @pytest.fixture()
 def settings_anthropic() -> Settings:
     return Settings(
+        llm_profile="manual",
         llm_provider="anthropic",
         anthropic_api_key="sk-ant-test",
         llm_model="claude-sonnet-4-20250514",
