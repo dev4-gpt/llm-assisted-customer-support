@@ -35,7 +35,7 @@ FastAPI --> JSONOutputs[JSONOutputs]
 - `README.md` — primary setup/API architecture reference.
 - `sample_payloads.json` — endpoint demo inputs.
 - `literature_review.md` — supporting write-up.
-- `LlmCustomerSupport_project_report (2).pdf` — project report artifact.
+- `LlmCustomerSupport_project_report.pdf` — project report artifact.
 
 ## `app/` (runtime source code)
 
