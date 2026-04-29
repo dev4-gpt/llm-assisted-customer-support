@@ -48,55 +48,45 @@ FastAPI service that uses a **configurable LLM** (default: **hosted OpenAI-compa
 ## Project Structure
 
 ```
-support_triage/
+llm-assist/
 ├── app/
-│   ├── api/v1/
-│   │   ├── errors.py          # Exception → HTTP response mapping
-│   │   └── routers.py         # All endpoint handlers
-│   ├── core/
-│   │   ├── config.py          # Pydantic-settings (single env-var access point)
-│   │   ├── dependencies.py    # FastAPI DI container (singleton services)
-│   │   ├── exceptions.py      # Domain exception hierarchy
-│   │   └── logging.py         # Structlog JSON logging
-│   ├── models/
-│   │   └── domain.py          # Request/response Pydantic models + enums
-│   ├── services/
-│   │   ├── llm_client.py      # LLM JSON client (retry, parse, metrics)
-│   │   ├── triage_service.py  # Ticket triage orchestration
-│   │   ├── quality_service.py # Agent response quality evaluation
-│   │   ├── pipeline_service.py# End-to-end pipeline (concurrent)
-│   │   ├── rag_service.py     # Policy retrieval (lexical or embedding)
-│   │   └── summarization_service.py
-│   ├── integrations/
-│   │   └── zendesk_worker.py  # Zendesk → POST /triage (fixture or live)
-│   ├── utils/
-│   │   ├── cache.py           # Redis response cache (graceful degradation)
-│   │   └── metrics.py         # Prometheus counters/histograms
-│   └── main.py                # App factory (API key + audit middleware, routes)
-├── tests/
-│   ├── unit/
-│   │   ├── test_triage_service.py
-│   │   ├── test_quality_service.py
-│   │   └── test_llm_client.py
-│   ├── integration/
-│   │   └── test_api.py
-│   └── conftest.py
+│   ├── api/v1/          # Routers and error mappings
+│   ├── core/            # Config, DI, exceptions, logging
+│   ├── integrations/    # Zendesk worker stub
+│   ├── models/          # Pydantic domain models
+│   ├── services/        # Business logic (triage, quality, summarize, rag)
+│   ├── utils/           # Cache and metrics
+│   └── main.py          # FastAPI application factory
+├── artifacts/           # Generated outputs (ignored in git)
+│   ├── data/            # Downloaded dataset manifests
+│   ├── eda/             # Exploratory data analysis plots
+│   ├── eval/            # Golden evaluation metrics and summaries
+│   └── triage_roberta/  # Trained checkpoints (optional)
 ├── data/
-│   ├── golden/                # eval_set.jsonl + README
-│   └── fixtures/              # zendesk_ticket.json (worker demo)
-├── scripts/
-│   ├── run_offline_eval.py    # Mock or live benchmark → artifacts/eval/
-│   ├── run_eda.py             # EDA plots → artifacts/eda/ (pip install -e ".[eda]")
-│   ├── train_encoder_classifier.py
-│   └── train_triage_transformer.py  # optional BERT/RoBERTa fine-tune (.[transformer])
-├── docker/
-│   └── prometheus.yml
-├── .github/workflows/ci.yml
+│   ├── fixtures/        # Mock data for testing
+│   ├── golden/          # 100-ticket evaluation dataset
+│   ├── processed/       # Cleaned datasets
+│   ├── raw/             # Raw Kaggle downloads
+│   ├── download_kaggle.py # Dataset fetch helper
+│   └── policy_snippets.json # Local grounding policies
+├── docs/                # Extended documentation and runbooks
+├── evaluation/          # Metrics and splitting logic
+├── notebooks/
+│   ├── llm_assist_showcase.ipynb # Main presentation notebook
+│   └── README.md
+├── scripts/             # CLI utilities
+│   ├── run_eda.py       # Generate EDA plots
+│   ├── run_offline_eval.py # Generate live/mock LLM evaluation
+│   └── train_triage_transformer.py # Transformer fine-tuning
+├── tests/
+│   ├── integration/     # End-to-end API tests
+│   ├── unit/            # Isolated component tests
+│   └── conftest.py
 ├── docker-compose.yml
 ├── Dockerfile
+├── literature_review.md # Literature survey
 ├── pyproject.toml
-├── .env.example
-└── sample_payloads.json
+└── README.md
 ```
 
 ---
@@ -161,6 +151,29 @@ This single test validates the API wiring and full `/api/v1/pipeline` orchestrat
 
 ---
 
+## 🎓 Academic Showcase (Notebook Execution & Results)
+
+For the comprehensive academic presentation, including the literature survey, exploratory data analysis, evaluation metrics, and end-to-end pipeline execution, use the provided Jupyter Notebook.
+
+### How to run the notebook:
+1. Ensure your `.env` is configured with a valid `LLM_PROFILE` and API key.
+2. Install the necessary dependencies (if you haven't already):
+   ```bash
+   pip install -e ".[dev,eda,eval,transformer]"
+   ```
+3. Start your preferred Jupyter environment (e.g. VS Code, Cursor, or JupyterLab).
+4. Open and execute `notebooks/llm_assist_showcase.ipynb` cell-by-cell.
+
+### Expected Results & Outputs
+By running the notebook, the system will automatically generate the following artifacts to prove the pipeline's effectiveness:
+
+* **Evaluation Metrics:** Outputs to `artifacts/eval/metrics_live.json`, detailing Micro/Macro F1 scores, subset accuracy, and minority class performance for multi-intent triage.
+* **Confusion Matrices:** High-resolution confusion matrices rendered inline and saved to the `artifacts/` directory, demonstrating the LLM's classification accuracy against the golden set.
+* **EDA Plots:** Class imbalance and text-length distributions saved to `artifacts/eda/`.
+* **Agent Quality Checks:** Demonstrates the system scoring agent responses and providing actionable coaching feedback via the `/quality` endpoint.
+
+---
+
 ## API Reference
 
 ### `POST /api/v1/triage`
@@ -178,16 +191,15 @@ curl -X POST http://localhost:8000/api/v1/triage \
 **Response:**
 ```json
 {
-  "priority": "critical",
-  "category": "billing",
-  "intents": [
-    { "label": "billing", "score": 0.94 },
-    { "label": "general_inquiry", "score": 0.2 }
+  "priority":"high",
+  "category":"billing",
+  "intents":[
+    {"label":"billing","score":0.9}
   ],
-  "sentiment_score": -0.85,
-  "routed_team": "critical_response",
-  "rationale": "Customer reports a duplicate charge — a high-urgency financial issue requiring immediate billing team intervention.",
-  "confidence": 0.94
+  "sentiment_score":-0.8,
+  "routed_team":"escalations",
+  "rationale":"The customer was charged twice for their subscription, indicating a payment issue that requires immediate attention. The customer also marked the issue as urgent, further emphasizing the need for a prompt resolution.",
+  "confidence":0.95
 }
 ```
 
@@ -217,8 +229,8 @@ curl -X POST http://localhost:8000/api/v1/quality \
     "policy_safety": true,
     "resolved_or_escalated": false
   },
-  "coaching_feedback": "The response lacks genuine empathy and offers no concrete next step. Replace 'we will look into this' with a specific action and timeline. Add a ticket number to set expectations.",
-  "flagged_phrases": []
+  "coaching_feedback":"The response could be improved by acknowledging the customer's frustration with a more genuine apology, and providing a clear next step such as 'I'm going to go ahead and investigate this duplicate charge' or 'Can you please confirm your subscription details so I can look into this further?'",
+  "flagged_phrases":[]
 }
 ```
 
@@ -235,6 +247,9 @@ curl -X POST http://localhost:8000/api/v1/pipeline \
 ```
 
 **Response schema:** `{ triage: TriageResult, quality: QualityResult, recommended_sla_minutes: int, workflow_passed: bool }`
+
+**Response:** 
+`{"detail":[{"type":"missing","loc":["body","ticket_text"],"msg":"Field required","input":{"triage":{"description":"POST /api/v1/triage — Triage a single ticket","examples":[{"label":"Critical billing double-charge","payload":{"ticket_text":"I was charged twice for my subscription this month! $99.99 was debited twice from my bank account and I demand an immediate refund. This is completely unacceptable and I will dispute the charge with my bank if not resolved today."}},{"label":"Auth issue — locked out","payload":{"ticket_text":"I cannot log in to my account. I've tried resetting my password three times and the reset email never arrives. I have an important presentation tomorrow and need access urgently."}},{"label":"Low-priority feature request","payload":{"ticket_text":"Hi there, I'd love to see a dark mode option added to the dashboard. It would be much easier on the eyes during late-night sessions. Not urgent at all, just a suggestion!"}}]},"quality":{"description":"POST /api/v1/quality — Evaluate an agent draft response","examples":[{"label":"Good response — should pass","payload":{"ticket_text":"I was charged twice for my subscription this month and need a refund immediately.","agent_response":"I'm really sorry to hear you were charged twice — that's incredibly frustrating and I completely understand your concern. I've flagged your account for an urgent billing review and created ticket #BIL-4821. Our billing team will contact you within 2 business hours to process the refund. You won't need to take any further action."}},{"label":"Poor response — should fail","payload":{"ticket_text":"I was charged twice for my subscription this month and need a refund immediately.","agent_response":"Hi, thanks for reaching out. We'll look into this. Please allow 5-7 business days."}},{"label":"Policy violation — should fail with flagged phrase","payload":{"ticket_text":"Your app deleted all my files and I want compensation.","agent_response":"I apologise for the inconvenience. We guarantee we will compensate you fully and admit this was our fault. Please send your bank details and we will transfer money immediately."}}]},"pipeline":{"description":"POST /api/v1/pipeline — Full triage + quality workflow","examples":[{"label":"High-priority bug with decent agent response","payload":{"ticket_text":"The export to CSV feature is completely broken. I click the button and nothing happens. I've tried on Chrome and Firefox. This is blocking our entire reporting workflow.","agent_response":"Thank you for reporting this — I can see how disruptive this must be for your team. I've reproduced the CSV export issue and escalated it to our engineering team as priority P1 (ticket #ENG-7734). You should expect a fix in the next 24 hours. I'll personally notify you the moment it's deployed. In the meantime, you can export via our API as a workaround — I can send you the documentation if that would help."}},{"label":"Critical outage — agent response fails quality","payload":{"ticket_text":"Your entire platform has been down for 2 hours. We are losing thousands of dollars in revenue per minute. This is completely unacceptable. We need immediate escalation to your CTO.","agent_response":"Sorry for the issue. Our team is aware and working on it."}}]},"summarize":{"description":"POST /api/v1/summarize — Multi-turn thread summary","examples":[{"label":"Billing dispute thread","payload":{"turns":[{"role":"customer","content":"I was charged twice for my subscription this month and I need the duplicate reversed."},{"role":"agent","content":"I'm sorry for the duplicate charge. I've opened billing case #BIL-991 and our team will confirm within 2 hours."}]}}]},"rag":{"description":"POST /api/v1/rag/context — Policy snippet retrieval (lexical)","examples":[{"label":"Refund policy lookup","payload":{"query":"How long do refunds take and when should I escalate duplicate charges?"}}]}}},{"type":"missing","loc":["body","agent_response"],"msg":"Field required","input":{"triage":{"description":"POST /api/v1/triage — Triage a single ticket","examples":[{"label":"Critical billing double-charge","payload":{"ticket_text":"I was charged twice for my subscription this month! $99.99 was debited twice from my bank account and I demand an immediate refund. This is completely unacceptable and I will dispute the charge with my bank if not resolved today."}},{"label":"Auth issue — locked out","payload":{"ticket_text":"I cannot log in to my account. I've tried resetting my password three times and the reset email never arrives. I have an important presentation tomorrow and need access urgently."}},{"label":"Low-priority feature request","payload":{"ticket_text":"Hi there, I'd love to see a dark mode option added to the dashboard. It would be much easier on the eyes during late-night sessions. Not urgent at all, just a suggestion!"}}]},"quality":{"description":"POST /api/v1/quality — Evaluate an agent draft response","examples":[{"label":"Good response — should pass","payload":{"ticket_text":"I was charged twice for my subscription this month and need a refund immediately.","agent_response":"I'm really sorry to hear you were charged twice — that's incredibly frustrating and I completely understand your concern. I've flagged your account for an urgent billing review and created ticket #BIL-4821. Our billing team will contact you within 2 business hours to process the refund. You won't need to take any further action."}},{"label":"Poor response — should fail","payload":{"ticket_text":"I was charged twice for my subscription this month and need a refund immediately.","agent_response":"Hi, thanks for reaching out. We'll look into this. Please allow 5-7 business days."}},{"label":"Policy violation — should fail with flagged phrase","payload":{"ticket_text":"Your app deleted all my files and I want compensation.","agent_response":"I apologise for the inconvenience. We guarantee we will compensate you fully and admit this was our fault. Please send your bank details and we will transfer money immediately."}}]},"pipeline":{"description":"POST /api/v1/pipeline — Full triage + quality workflow","examples":[{"label":"High-priority bug with decent agent response","payload":{"ticket_text":"The export to CSV feature is completely broken. I click the button and nothing happens. I've tried on Chrome and Firefox. This is blocking our entire reporting workflow.","agent_response":"Thank you for reporting this — I can see how disruptive this must be for your team. I've reproduced the CSV export issue and escalated it to our engineering team as priority P1 (ticket #ENG-7734). You should expect a fix in the next 24 hours. I'll personally notify you the moment it's deployed. In the meantime, you can export via our API as a workaround — I can send you the documentation if that would help."}},{"label":"Critical outage — agent response fails quality","payload":{"ticket_text":"Your entire platform has been down for 2 hours. We are losing thousands of dollars in revenue per minute. This is completely unacceptable. We need immediate escalation to your CTO.","agent_response":"Sorry for the issue. Our team is aware and working on it."}}]},"summarize":{"description":"POST /api/v1/summarize — Multi-turn thread summary","examples":[{"label":"Billing dispute thread","payload":{"turns":[{"role":"customer","content":"I was charged twice for my subscription this month and I need the duplicate reversed."},{"role":"agent","content":"I'm sorry for the duplicate charge. I've opened billing case #BIL-991 and our team will confirm within 2 hours."}]}}]},"rag":{"description":"POST /api/v1/rag/context — Policy snippet retrieval (lexical)","examples":[{"label":"Refund policy lookup","payload":{"query":"How long do refunds take and when should I escalate duplicate charges?"}}]}}}]}%`
 
 ---
 
@@ -255,6 +270,8 @@ curl -X POST http://localhost:8000/api/v1/summarize \
 
 **Response:** `summary`, `key_points`, `confidence`.
 
+`{"summary":"The customer was charged twice for their subscription and has reported the issue to the support team. A billing case has been opened to investigate and resolve the matter. The customer is waiting for a response within the next 2 hours. The issue is currently being processed.","key_points":["Double charge","Billing case #991 opened","Waiting for response"],"confidence":0.9}` 
+
 ---
 
 ### `POST /api/v1/rag/context`
@@ -266,6 +283,11 @@ curl -X POST http://localhost:8000/api/v1/rag/context \
   -H "Content-Type: application/json" \
   -d '{"query": "refund SLA duplicate charge escalation"}'
 ```
+
+**Response:** `snippets
+
+`{"snippets":[{"id":"refund_sla","title":"Refund processing SLA","body":"Standard refunds are processed within 5 to 10 business days after approval. Billing must verify the original payment method before issuing credit. Escalate duplicate charges to the billing specialists queue immediately.","score":0.4509}]}`
+
 
 ---
 
