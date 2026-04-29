@@ -58,9 +58,3 @@ PY
 - Torch/vision local environment warnings during tests (non-fatal for project behavior).
 - Notebook currently emits a `MissingIDFieldWarning` on parse; this is future-facing and not a runtime blocker today.
 
-## Runnability verdict
-
-- **Presentation-ready** for API + notebook demo path, provided:
-  - a valid LLM profile/model pair is selected in `.env`,
-  - `uvicorn` is restarted after `.env` changes,
-  - notebook endpoint section uses warm-up + resilient timeout flow.
