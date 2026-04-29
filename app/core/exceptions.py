@@ -31,25 +31,25 @@ class ValidationError(SupportTriageError):
 
 
 class LLMError(SupportTriageError):
-    """Anthropic API call failed."""
+    """LLM Provider API call failed."""
 
     def __init__(self, message: str) -> None:
         super().__init__(message, code="LLM_ERROR")
 
 
 class LLMRateLimitError(LLMError):
-    """Anthropic rate-limit hit."""
+    """LLM Provider rate-limit hit."""
 
     def __init__(self) -> None:
-        super().__init__("Anthropic rate limit exceeded. Retry after back-off.")
+        super().__init__("LLM Provider rate limit exceeded. Retry after back-off.")
         self.code = "LLM_RATE_LIMIT"
 
 
 class LLMTimeoutError(LLMError):
-    """Anthropic API timed out."""
+    """LLM Provider API timed out."""
 
     def __init__(self) -> None:
-        super().__init__("Anthropic API request timed out.")
+        super().__init__("LLM Provider API request timed out.")
         self.code = "LLM_TIMEOUT"
 
 
