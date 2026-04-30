@@ -9,32 +9,30 @@ This project implements a multi-tier NLP pipeline designed to automate customer 
 
 ```mermaid
 graph TD
-    subgraph Data_Layer ["1. Data Ingestion and Strategy"]
-        A["Multi-Corpus Dataset"] --> B["Twitter/News/Amazon/Zendesk"]
-        B --> C["Stratified 70/15/15 Split"]
-        C --> D["Class Balancing: Undersampling"]
+    subgraph Data_Layer [1. Data Ingestion & Strategy]
+        A[Multi-Corpus Dataset] --> B[Twitter/News/Amazon/Zendesk]
+        B --> C[Stratified 70/15/15 Split]
+        C --> D[Class Balancing: Undersampling]
     end
 
-    subgraph Experimental_Layer ["2. Model Development"]
-        D --> E["Baseline: TF-IDF + LogReg"]
-        D --> F["SOTA: Fine-tuned RoBERTa"]
-        E --> G["Accuracy: 75.16%"]
-        F --> H["Accuracy: 87.77%"]
+    subgraph Experimental_Layer [2. Model Development]
+        D --> E[Baseline: TF-IDF + LogReg]
+        D --> F[SOTA: Fine-tuned RoBERTa]
+        E --> G[Accuracy: 75.16%]
+        F --> H[Accuracy: 87.77%]
     end
 
-    subgraph Production_Layer ["3. LLM Pipeline"]
-        D --> I["NVIDIA NIM: Llama-3-70B"]
-        I --> J["RAG: Policy Context Retrieval"]
-        J --> K["Intent Fallback: MiniLM Similarity"]
-        K --> L["Multi-Task Output: Triage/Quality/Summary"]
+    subgraph Production_Layer [3. LLM Pipeline]
+        D --> I[NVIDIA NIM: Llama-3-70B]
+        I --> J[RAG: Policy Context Retrieval]
+        J --> K[Intent Fallback: MiniLM Similarity]
+        K --> L[Multi-Task Output: Triage/Quality/Summary]
     end
 
-    subgraph Evaluation_Layer ["4. Validation and Metrics"]
-        G --> M["run_offline_eval.py"]
-        H --> M
-        L --> M
-        M --> N["metrics.json: Source of Truth"]
-        N --> O["PROJECT_FINAL_REPORT.md"]
+    subgraph Evaluation_Layer [4. Validation & Metrics]
+        G & H & L --> M[run_offline_eval.py]
+        M --> N[metrics.json: Source of Truth]
+        N --> O[PROJECT_FINAL_REPORT.md]
     end
 ```
 
@@ -85,17 +83,3 @@ For the final submission, use the values from **`metrics.json`**:
 > **75.16% (Baseline) $\rightarrow$ 82.50% (LLM Pipeline) $\rightarrow$ 87.77% (RoBERTa)**
 
 These represent the most robust evaluation on the full dataset and provide the most compelling narrative for the "Zero-to-Hero" NLP progression.
-
----
-
-## 6. Technical Deep Dive: TF-IDF with Logistic Regression vs Linear SVC
-
-### **1. Optimized for "High-Dimensional" Data**
-When using TF-IDF with `max_features=50,000`, the system creates high-dimensional sparse vectors. Both **LinearSVC** and **LR** are mathematically designed to handle "wide" data efficiently.
-
-### **2. The Battle of "Boundary" vs. "Probability"**
-*   **LinearSVC (The Hard Boundary):** Tries to maximize the margin between categories. It is often more accurate on clean datasets.
-*   **Logistic Regression (The Probability Expert):** Better for production pipelines because it provides a **Confidence Score**. This allows the system to trigger the LLM Fallback if the baseline confidence is below a threshold.
-
-### **3. "Class Weight = Balanced"**
-This setting is critical for handling dataset imbalance (e.g., more `general_inquiry` than `billing` tickets). It forces the model to prioritize minority classes during training.
