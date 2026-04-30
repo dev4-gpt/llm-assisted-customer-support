@@ -60,3 +60,28 @@ For the **Academic Presentation and Final Submission**, the authoritative metric
 > **75.16% (Baseline) $\rightarrow$ 82.50% (LLM Triage) $\rightarrow$ 87.77% (Fine-tuned RoBERTa)**
 
 These represent the most robust evaluation on the full dataset and provide the most compelling narrative for the "Zero-to-Hero" NLP progression.
+
+
+
+
+
+
+# TF-IDF with Logistic Regression vs Linear SVC
+
+### 1. Optimized for "High-Dimensional" Data
+When you use TF-IDF with `max_features=50,000`, you are creating a massive spreadsheet with 50,000 columns. 
+*   **LinearSVC** and **LR** are both mathematically designed to handle "wide" data like this without crashing or slowing down. 
+*   They are the "Standard Bearers" for text classification before the era of Deep Learning.
+
+### 2. The Battle of "Boundary" vs. "Probability"
+We use both to see which "philosophy" works better for your dataset:
+*   **LinearSVC (The Hard Boundary):** It tries to draw the widest possible "no-man's-land" between categories. It is often slightly more accurate than LR on clean data.
+*   **Logistic Regression (The Probability Expert):** This is what you have in your script right now. It is better for your **Pipeline** because it provides a "Confidence Score." If LR is only 30% sure, your system can say *"I don't know, let's ask the LLM."* LinearSVC doesn't provide those probabilities as easily.
+
+### 3. "Class Weight = Balanced" (CRITICAL)
+If you look at **Line 66** in your code, you'll see `class_weight="balanced"`.
+*   This is the "secret sauce." Because you have way more `general_inquiry` tickets than `billing` tickets, these models would normally ignore the small categories. 
+*   Setting this to "balanced" tells the model: *"Pay 10x more attention to the rare categories like Billing and Tech Bugs."*
+
+**Summary for your slides:** 
+> *"We employed TF-IDF with Linear Baselines (LR/SVC) because they are mathematically optimized for high-dimensional sparse text and provide an interpretable feature-importance map that deep learning models lack."*
