@@ -9,30 +9,32 @@ This project implements a multi-tier NLP pipeline designed to automate customer 
 
 ```mermaid
 graph TD
-    subgraph Data_Layer [1. Data Ingestion & Strategy]
-        A[Multi-Corpus Dataset] --> B[Twitter/News/Amazon/Zendesk]
-        B --> C[Stratified 70/15/15 Split]
-        C --> D[Class Balancing: Undersampling]
+    subgraph Data_Layer ["1. Data Ingestion and Strategy"]
+        A["Multi-Corpus Dataset"] --> B["Twitter/News/Amazon/Zendesk"]
+        B --> C["Stratified 70/15/15 Split"]
+        C --> D["Class Balancing: Undersampling"]
     end
 
-    subgraph Experimental_Layer [2. Model Development]
-        D --> E[Baseline: TF-IDF + LogReg]
-        D --> F[SOTA: Fine-tuned RoBERTa]
-        E --> G[Accuracy: 75.16%]
-        F --> H[Accuracy: 87.77%]
+    subgraph Experimental_Layer ["2. Model Development"]
+        D --> E["Baseline: TF-IDF + LogReg"]
+        D --> F["SOTA: Fine-tuned RoBERTa"]
+        E --> G["Accuracy: 75.16%"]
+        F --> H["Accuracy: 87.77%"]
     end
 
-    subgraph Production_Layer [3. LLM Pipeline]
-        D --> I[NVIDIA NIM: Llama-3-70B]
-        I --> J[RAG: Policy Context Retrieval]
-        J --> K[Intent Fallback: MiniLM Similarity]
-        K --> L[Multi-Task Output: Triage/Quality/Summary]
+    subgraph Production_Layer ["3. LLM Pipeline"]
+        D --> I["NVIDIA NIM: Llama-3-70B"]
+        I --> J["RAG: Policy Context Retrieval"]
+        J --> K["Intent Fallback: MiniLM Similarity"]
+        K --> L["Multi-Task Output: Triage/Quality/Summary"]
     end
 
-    subgraph Evaluation_Layer [4. Validation & Metrics]
-        G & H & L --> M[run_offline_eval.py]
-        M --> N[metrics.json: Source of Truth]
-        N --> O[PROJECT_FINAL_REPORT.md]
+    subgraph Evaluation_Layer ["4. Validation and Metrics"]
+        G --> M["run_offline_eval.py"]
+        H --> M
+        L --> M
+        M --> N["metrics.json: Source of Truth"]
+        N --> O["PROJECT_FINAL_REPORT.md"]
     end
 ```
 
